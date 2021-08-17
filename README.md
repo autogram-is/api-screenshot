@@ -1,12 +1,12 @@
 # Screenshot API
 
-A runtime service to use live website screenshots on your site.
+A runtime service to generate live website screenshots on Autogram's sites. We use it for link previews as well as generating OpenGraph images for interesting posts.
 
-Read the [Blog post: Building an Automated Screenshot Service on Netlify in ~140 Lines of Code](https://www.zachleat.com/web/screenshots/).
+Based on the [11ty Screenshot](https://github.com/11ty/api-screenshot) plugin; read [Zach Leatherman's original blog post](https://www.zachleat.com/web/automatic-opengraph/) about this technique for more information.
 
 ## Deploy
 
-<a href="https://app.netlify.com/start/deploy?repository=https://github.com/11ty/api-screenshot
+<a href="https://app.netlify.com/start/deploy?repository=https://github.com/autogram-is/api-screenshot
 "><img src="https://www.netlify.com/img/deploy/button.svg" border="0" alt="Deploy to Netlify"></a>
 
 

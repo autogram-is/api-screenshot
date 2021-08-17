@@ -1,23 +1,23 @@
 {
-  "name": "eleventy-api-screenshot",
+  "name": "autogram-api-screenshot",
   "version": "1.0.0",
-  "description": "A service to add web page screenshots to your Eleventy sites.",
+  "description": "A service that adds web page screenshots to Autogram sites.",
   "scripts": {},
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/11ty/api-screenshot.git"
+    "url": "git+https://github.com/autogram-is/api-screenshot.git"
   },
   "author": {
-    "name": "Zach Leatherman",
-    "email": "zachleatherman@gmail.com",
-    "url": "https://zachleat.com/"
+    "name": "Jeff Eaton",
+    "email": "jeff@eaton.fyi",
+    "url": "https://autogram.is/"
   },
   "keywords": [],
   "bugs": {
-    "url": "https://github.com/11ty/api-screenshot/issues"
+    "url": "https://github.com/autogram-is/api-screenshot/issues"
   },
-  "homepage": "https://github.com/11ty/api-screenshot#readme",
+  "homepage": "https://github.com/autogram-is/api-screenshot#readme",
   "dependencies": {
     "@netlify/functions": "^0.7.2",
     "chrome-aws-lambda": "^10.1.0",
