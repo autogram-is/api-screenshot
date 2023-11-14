@@ -13,13 +13,16 @@ function isFullUrl(url) {
   }
 }
 
-async function screenshot(url, format, viewportSize, dpr = 1, withJs = true) {
+async function screenshot(url, { format, viewport, dpr = 1, withJs = true, wait, timeout = 8500 }) {
+  // Must be between 3000 and 8500
+  timeout = Math.min(Math.max(timeout, 3000), 8500);
+
   const browser = await chromium.puppeteer.launch({
     executablePath: await chromium.executablePath,
     args: chromium.args,
     defaultViewport: {
-      width: viewportSize[0],
-      height: viewportSize[1],
+      width: viewport[0],
+      height: viewport[1],
       deviceScaleFactor: parseFloat(dpr),
     },
     headless: chromium.headless,
@@ -31,17 +34,36 @@ async function screenshot(url, format, viewportSize, dpr = 1, withJs = true) {
     page.setJavaScriptEnabled(false);
   }
 
-  // TODO is there a way to bail at timeout and still show what’s rendered on the page?
-  let response = await page.goto(url, {
-    waitUntil: ["load", "networkidle0"],
-    timeout: 8500
-  });
+  let response = await Promise.race([
+    page.goto(url, {
+      waitUntil: wait || ["load"],
+      timeout,
+    }),
+    new Promise(resolve => {
+      setTimeout(() => {
+        resolve(false); // false is expected below
+      }, timeout - 1500); // we need time to execute the window.stop before the top level timeout hits
+    }),
+  ]);
+
+  if(response === false) { // timed out, resolved false
+    await page.evaluate(() => window.stop());
+  }
+
   // let statusCode = response.status();
-  // TODO handle 404/500 status codes better
+  // TODO handle 4xx/5xx status codes better
 
   let options = {
     type: format,
-    encoding: "base64"
+    encoding: "base64",
+    fullPage: false,
+    captureBeyondViewport: false,
+    clip: {
+      x: 0,
+      y: 0,
+      width: viewport[0],
+      height: viewport[1],
+    }
   };
 
   if(format === "jpeg") {
@@ -59,20 +81,47 @@ async function screenshot(url, format, viewportSize, dpr = 1, withJs = true) {
 async function handler(event, context) {
   // e.g. /https%3A%2F%2Fwww.11ty.dev%2F/small/1:1/smaller/
   let pathSplit = event.path.split("/").filter(entry => !!entry);
-  let [url, size, aspectratio, zoom] = pathSplit;
-  let format = "jpeg"; // hardcoded for now
+  let [url, size, aspectratio, zoom, cachebuster] = pathSplit;
+  let format = "jpeg"; // hardcoded for now, but png and webp are supported!
   let viewport = [];
 
   // Manage your own frequency by using a _ prefix and then a hash buster string after your URL
   // e.g. /https%3A%2F%2Fwww.11ty.dev%2F/_20210802/ and set this to today’s date when you deploy
   if(size && size.startsWith("_")) {
+    cachebuster = size;
     size = undefined;
   }
   if(aspectratio && aspectratio.startsWith("_")) {
+    cachebuster = aspectratio;
     aspectratio = undefined;
   }
   if(zoom && zoom.startsWith("_")) {
+    cachebuster = zoom;
     zoom = undefined;
+  }
+
+  // Options
+  let pathOptions = {};
+  let optionsMatch = (cachebuster || "").split("_").filter(entry => !!entry);
+  for(let o of optionsMatch) {
+    let [key, value] = o.split(":");
+    pathOptions[key.toLowerCase()] = parseInt(value, 10);
+  }
+
+  let wait = ["load"];
+  if(pathOptions.wait === 0) {
+    wait = ["domcontentloaded"];
+  } else if(pathOptions.wait === 1) {
+    wait = ["load"];
+  } else if(pathOptions.wait === 2) {
+    wait = ["load", "networkidle0"];
+  } else if(pathOptions.wait === 3) {
+    wait = ["load", "networkidle2"];
+  }
+
+  let timeout;
+  if(pathOptions.timeout) {
+    timeout = pathOptions.timeout * 1000;
   }
 
   // Set Defaults
@@ -130,7 +179,13 @@ async function handler(event, context) {
       throw new Error("Incorrect API usage. Expects one of: /:url/ or /:url/:size/ or /:url/:size/:aspectratio/")
     }
 
-    let output = await screenshot(url, format, viewport, dpr);
+    let output = await screenshot(url, {
+      format,
+      viewport,
+      dpr,
+      wait,
+      timeout,
+    });
 
     // output to Function logs
     console.log(url, format, { viewport }, { size }, { dpr }, { aspectratio });
@@ -150,6 +205,8 @@ async function handler(event, context) {
       // We need to return 200 here or Firefox won’t display the image
       // HOWEVER a 200 means that if it times out on the first attempt it will stay the default image until the next build.
       statusCode: 200,
+      // HOWEVER HOWEVER, we can set a ttl of 3600 which means that the image will be re-requested in an hour.
+      ttl: 3600,
       headers: {
         "content-type": "image/svg+xml",
         "x-error-message": error.message

@@ -1,3 +1,5 @@
+<p align="center"><img src="https://www.11ty.dev/img/logo-github.svg" width="200" height="200" alt="11ty Logo"></p>
+
 # Screenshot API
 
 A runtime service to generate live website screenshots on Autogram's sites. We use it for link previews as well as generating OpenGraph images for interesting posts.
@@ -9,6 +11,7 @@ Based on the [11ty Screenshot](https://github.com/11ty/api-screenshot) plugin; r
 <a href="https://app.netlify.com/start/deploy?repository=https://github.com/autogram-is/api-screenshot
 "><img src="https://www.netlify.com/img/deploy/button.svg" border="0" alt="Deploy to Netlify"></a>
 
+* You will _need_ to set an environment variable in the Netlify App UI `AWS_LAMBDA_JS_RUNTIME` with the value `nodejs12.x`. Read more at [Issue #17](https://github.com/11ty/api-screenshot/issues/17).
 
 ## Usage
 
@@ -36,11 +39,13 @@ Image URLs have the formats:
   * `bigger` (1.4 `devicePixelRatio`)
   * `smaller` (0.71 `devicePixelRatio`)
 
-### Advanced: Manual Cache Busting
+### Advanced Options
+
+#### Manual Cache Busting
 
 If the screenshots aren’t updating at a high enough frequency you can pass in your own cache busting key using an underscore prefix `_` after your URL.
 
-This can be any arbitrary string tied to your unique build, here’s an example that uses today’s date:
+This can be any arbitrary string tied to your unique build, here’s some examples that use today’s date:
 
 ```
 /:url/_20210802/
@@ -48,3 +53,35 @@ This can be any arbitrary string tied to your unique build, here’s an example 
 /:url/:size/:aspectratio/_20210802/
 /:url/:size/:aspectratio/:zoom/_20210802/
 ```
+
+#### Custom Wait Conditions
+
+You can customize the conditions with which the headless browser will wait to take the screenshot. At a low level, this controls the [`waitUntil` property in Puppeteer’s `goto` call](https://pptr.dev/#?product=Puppeteer&version=v13.3.1&show=api-pagegotourl-options). The options are:
+
+* DOMContentLoaded `wait:0`
+* Load event `wait:1` (default)
+* Load event and there have been no network connections for 500ms: `wait:2`
+* Load event and there are fewer than two network connections for 500ms: `wait:3`
+
+```
+/:url/_wait:0/
+/:url/_wait:1/
+/:url/_wait:2/
+/:url/_wait:3/
+```
+
+#### Custom Timeout
+
+Number of seconds to wait before the request times out. We will attempt to simulate the stop button and return the screenshot that exists up to that point. Worst case, a default Eleventy logo is returned.
+
+* Minimum: `3`
+* Maximum: `9`
+
+```
+/:url/_timeout:3/
+/:url/_timeout:9/
+```
+
+#### Combine these options
+
+You can use any of these advanced options together, like `/:url/_20210802_wait:0_timeout:2/`. Order only matters to the uniqueness of the URL caching on the CDN: `/:url/_20210802_wait:0/` and `/:url/_wait:0_20210802/` will be functionally equivalent but make two different screenshot requests.
